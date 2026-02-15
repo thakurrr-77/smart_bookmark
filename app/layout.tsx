@@ -25,9 +25,16 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col items-center selection:bg-indigo-500 selection:text-white overflow-x-hidden`}
       >
-        {children}
+
+        <div className="w-full max-w-4xl px-4 py-8 flex-1 flex flex-col relative z-10">
+          {children}
+        </div>
+
+        <footer className="w-full py-6 text-center text-slate-500 text-xs border-t border-slate-800">
+          <p>Smart Bookmarks • Realtime Manager</p>
+        </footer>
       </body>
     </html>
   );
