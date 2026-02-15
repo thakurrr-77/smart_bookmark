@@ -44,9 +44,10 @@ export default function AuthButton({ user }: { user: any }) {
     return (
         <button
             onClick={handleLogin}
-            className="group relative px-6 py-2.5 rounded-full font-medium flex items-center gap-3 bg-white text-slate-950 hover:bg-slate-100 transition-all active:scale-95 shadow-lg shadow-indigo-500/20"
+            className="group relative px-4 py-2.5 sm:px-6 sm:py-2.5 rounded-full font-medium flex items-center justify-center gap-3 bg-white text-slate-950 hover:bg-slate-100 transition-all active:scale-95 shadow-lg shadow-indigo-500/20"
+            aria-label="Sign in with Google"
         >
-            <svg className="w-5 h-5 relative z-10" viewBox="0 0 24 24">
+            <svg className="w-5 h-5 relative z-10 shrink-0" viewBox="0 0 24 24">
                 <path
                     fill="currentColor"
                     d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -68,7 +69,8 @@ export default function AuthButton({ user }: { user: any }) {
                     className="text-[#EA4335]"
                 />
             </svg>
-            <span className="relative z-10">Sign in with Google</span>
+            <span className="relative z-10 hidden sm:inline">Sign in with Google</span>
+            <span className="relative z-10 sm:hidden font-semibold">Sign in</span>
         </button>
     )
 }

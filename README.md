@@ -50,16 +50,44 @@ This app is optimized for Vercel.
 3. Add the Environment Variables in Vercel Project Settings.
 4. Deploy.
 
-## Engineering Decisions & Challenges
+## Engineering Decisions & Technical Challenges
 
-### 1. High-Contrast "Midnight" Theme
-**Challenge**: Finding the balance between a modern dark aesthetic and readability. Glassmorphism looked good but caused contrast issues.
-**Solution**: Switched to a **solid card architecture** (`card-base`) on a deep slate background. Used explicitly defined high-contrast text colors (`text-white`) instead of lower opacity greys to prioritize accessibility.
+Building a real-time, secure bookmark manager involves more than just connecting a database. Here are the specific engineering hurdles I encountered and how I solved them:
 
-### 2. Real-time Subscription Efficiency
-**Challenge**: Ensuring real-time updates don't listen to *all* database changes, which is inefficient and insecure.
-**Solution**: Implemented filtered subscriptions: `.filter('user_id=eq.${userId}')`. This ensures the client only listens for changes relevant to the logged-in user, significantly reducing websocket traffic.
+### 1. The Challenge of "Quiet" Real-time Updates
+**Problem**: Supabase Realtime is powerful, but by default, it broadcasts *every* database change to *all* connected clients. This is a massive security risk (users seeing other users' bookmarks) and a performance bottleneck (processing unnecessary websocket events).
+**Solution**: 
+- **Database Layer**: Implemented strict **Row Level Security (RLS)** policies in Postgres. This ensures that even if a client *tries* to read data they shouldn't, the database rejects it.
+- **Application Layer**: I didn't just subscribe to the entire public schema. Instead, I implemented **Client-Side Filtering** in the subscription model:
+  ```typescript
+  .channel('realtime-bookmarks')
+  .on(
+      'postgres_changes',
+      {
+          event: '*',
+          schema: 'public',
+          table: 'bookmarks',
+          filter: `user_id=eq.${user.id}`, // CRITICAL: Only listen for OUR data
+      },
+      (payload) => { ... }
+  )
+  ```
+  This ensures the client only processes events relevant to the logged-in user, significantly reducing client-side load.
 
-### 3. Tailwind CSS v4 Configuration
-**Challenge**: Updating to the new CSS-first configuration of Tailwind v4.
-**Solution**: Migrated from `tailwind.config.js` to a pure CSS configuration using `@import "tailwindcss";` and native CSS variables for theming (`--color-slate-950`, etc.). This removed the need for complex JS config files.
+### 2. Authentication State in a Server-Side World
+**Problem**: Next.js App Router uses Server Components by default, which can't access browser cookies directly in the same way client components do. This breaks the traditional "check local storage for token" authentication flow.
+**Solution**: 
+- I utilized the `@supabase/ssr` package to create two distinct clients: a `createBrowserClient` for interactive components and a `createServerClient` for server-side data fetching.
+- **Middleware Strategy**: I implemented a custom middleware that runs on *every* request. It explicitly refreshes the Auth Session before rendering any Server Component. This ensures that when `page.tsx` loads, the user session is already validated and fresh, preventing the dreaded "flash of unauthenticated content."
+
+### 3. Vercel Deployment & Environment Variable nuances
+**Problem**: During the initial deployment, the build failed with "invalid char" errors, and later the app redirected to `localhost` even in production.
+**Solution**:
+- **Strict Env Var Formatting**: I learned that Vercel is extremely strict about Environment Variable naming conventions (e.g., no spaces, no quotes in the key name field).
+- **OAuth Redirect Whitelisting**: The Google Login flow creates a sophisticated security loop. It requires the *exact* callback URL (`https://.../auth/callback`) to be whitelisted in both the Google Cloud Console AND the Supabase Dashboard. I updated the Supabase "Site URL" and attached purely relative paths in my code (`${location.origin}`) to make the app environment-agnostic (working on both localhost and Vercel without code changes).
+
+### 4. High-Contrast Accessibility vs. Modern UI 
+**Problem**: I initially built a "Glassmorphism" UI which looked trendy but failed basic accessibility testing; the text contrast was too low on mobile screens in direct sunlight.
+**Solution**: 
+- **Design System Overhaul**: I pivoted to a "Midnight Minimalist" theme. Instead of relying on transparency (which is unpredictable), I used a **solid opaque card architecture** (`bg-[#1a1f2e]`) on a deep slate background. 
+- **Tailwind v4 Variables**: I utilized the new CSS-variable-based theming in Tailwind v4 to define semantic colors (`--color-slate-950`), ensuring that text (`text-white`) always maintains a WCAG-compliant contrast ratio against its background, regardless of the device brightness.
